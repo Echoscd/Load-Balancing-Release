@@ -1,15 +1,30 @@
-# GPU Request Scheduling Simulator
+# Load Balancing Simulator for Barrier-Synchronized Systems
 
-A comprehensive simulation framework for evaluating GPU request scheduling strategies in large language model (LLM) serving systems. This project provides a flexible environment to compare different scheduling policies, analyze performance metrics, and conduct parameter sweeps.
+A comprehensive simulation framework for evaluating request scheduling strategies in barrier-synchronized parallel systems, with applications to large language model (LLM) serving. This project implements the universal load balancing principle proposed in [Chen et al., 2026](https://arxiv.org/abs/2601.17855) and provides a flexible environment to compare different scheduling policies, analyze performance metrics, and conduct parameter sweeps.
 
 ## Features
 
 - **Multiple Scheduling Strategies**: Implementations of FCFS, JSQ, BF-IO, Round Robin, LPT, and more
 - **Real Dataset Support**: Load requests from ShareGPT, ArXiv, BurstGPT, or custom CSV/JSONL files
-- **Comprehensive Metrics**: Throughput, latency, GPU imbalance, utilization, power consumption, and energy
-- **Batch Experiments**: Automated scripts for parameter sweeps (batch size, GPU count, horizon values)
-- **Visualization**: GPU load trajectory plots and strategy comparison charts
+- **Comprehensive Metrics**: Throughput, latency, worker imbalance, utilization, power consumption, and energy
+- **Batch Experiments**: Automated scripts for parameter sweeps (batch size, worker count, horizon values)
+- **Visualization**: Worker load trajectory plots and strategy comparison charts
 - **Hyperparameter Optimization**: Optuna-based search for optimal strategy parameters
+
+## Citation
+
+If you use this simulator in your research, please cite:
+
+```bibtex
+@article{chen2026universal,
+  title={A Universal Load Balancing Principle and Its Application to Large Language Model Serving},
+  author={Chen, Zixi and Bu, Tianci and Song, Chendong and Lu, Xin and Ye, Yinyu and Zhou, Zijie},
+  journal={arXiv preprint arXiv:2601.17855},
+  year={2026}
+}
+```
+
+**Paper**: [arXiv:2601.17855](https://arxiv.org/abs/2601.17855) - "A Universal Load Balancing Principle and Its Application to Large Language Model Serving"
 
 ## Project Structure
 
@@ -37,7 +52,7 @@ A comprehensive simulation framework for evaluating GPU request scheduling strat
 │   ├── test_balance_future_horizon.py
 │   └── bash_*.sh                    # Batch experiment scripts
 │       ├── bash_multiB.sh            # Batch size sweep
-│       ├── bash_multiG.sh             # GPU count sweep
+│       ├── bash_multiG.sh             # Worker count sweep
 │       └── bash_multiH.sh             # Horizon value sweep
 ├── arxiv_data_8000.json              # Sample ArXiv dataset
 ├── burst_data_8000.json              # Sample BurstGPT dataset
@@ -80,8 +95,6 @@ optuna>=3.0
 
 ## Quick Start
 
-### Basic Simulation
-
 Run a simulation with default parameters:
 
 ```bash
@@ -118,7 +131,7 @@ Run parameter sweeps using bash scripts:
 # Sweep batch sizes
 bash scripts/bash_multiB.sh --strategy BF-IO --G 256 --H 140
 
-# Sweep GPU counts
+# Sweep worker counts
 bash scripts/bash_multiG.sh --strategy BF-IO --B 72 --H 60
 
 # Sweep horizon values
@@ -141,8 +154,8 @@ bash scripts/bash_multiH.sh
 | `--dataset_path` | str | None | Path to dataset file |
 | `--strategy` | str | None | Strategy to run: FCFS, JSQ, BF-IO, BF-IO-H0 |
 | `--H` | int | None | Horizon value for BF-IO strategy |
-| `--B` | int | 72 | Batch size (max concurrent requests per GPU) |
-| `--G` | int | 16 | Number of GPUs (workers) |
+| `--B` | int | 72 | Batch size (max concurrent requests per worker) |
+| `--G` | int | 16 | Number of workers |
 | `--skip_plot` | flag | False | Skip plotting, only run statistics |
 
 ### Example Commands
@@ -154,7 +167,7 @@ python scripts/main.py --N 50000 --n_repeat 10
 # Run BF-IO with specific horizon
 python scripts/main.py --strategy BF-IO --H 80 --N 80000
 
-# Run FCFS with custom GPU and batch size
+# Run FCFS with custom worker count and batch size
 python scripts/main.py --strategy FCFS --G 64 --B 96
 
 # Use real dataset with BF-IO
@@ -176,7 +189,7 @@ python scripts/main.py \
    - Baseline strategy
 
 2. **JSQ (Join Shortest Queue)**
-   - Assigns requests to GPU with minimum current load
+   - Assigns requests to worker with minimum current load
    - Load balancing heuristic
 
 3. **BF-IO (Balance Future - Input/Output)**
@@ -189,7 +202,7 @@ python scripts/main.py \
    - Only considers current load
 
 5. **Round Robin**
-   - Cyclic assignment to GPUs
+   - Cyclic assignment to workers
 
 6. **LPT (Longest Processing Time)**
    - Heap-based longest-first scheduling
@@ -224,16 +237,16 @@ The simulator computes the following performance metrics:
 - **Average Latency**: Mean completion time per request
 - **Throughput**: Tokens processed per second
 - **QPM (Queries Per Minute)**: Completed requests per minute
-- **Average GPU Imbalance**: Load imbalance across GPUs
+- **Average Worker Imbalance**: Load imbalance across workers
   - Formula: `avg_imbalance = mean(n_worker * max_load - sum_load)`
-- **Average GPU Utilization**: Mean GPU utilization rate
-- **GPU Idle Rate**: Fraction of time GPUs are idle
+- **Average Worker Utilization**: Mean worker utilization rate
+- **Worker Idle Rate**: Fraction of time workers are idle
 - **Average Power**: Mean power consumption (Watts)
 - **Total Energy**: Total energy consumption (Joules)
 
 ### Power Model
 
-The simulator includes a power consumption model based on GPU utilization:
+The simulator includes a power consumption model based on worker utilization:
 - Idle power: 100W
 - Peak power: 400W
 - Power scales sublinearly with utilization (γ = 0.7)
@@ -294,7 +307,7 @@ bash scripts/bash_multiB.sh --strategy BF-IO --G 256 --H 140
 ```
 
 ### `bash_multiG.sh`
-Sweeps GPU count (G) values:
+Sweeps worker count (G) values:
 ```bash
 bash scripts/bash_multiG.sh --strategy BF-IO --B 72 --H 60
 ```
@@ -309,7 +322,7 @@ bash scripts/bash_multiH.sh
 
 Results are saved to `results/` directory:
 - `multiB_results.csv` - Batch size sweep results
-- `multiG_results.csv` - GPU count sweep results
+- `multiG_results.csv` - Worker count sweep results
 - `multiH_results.csv` - Horizon sweep results
 - `power_*.csv` - Power consumption data
 - `power_timeseries_*.csv` - Time-series power data
@@ -324,7 +337,7 @@ Use Optuna for hyperparameter search:
 python scripts/optimize.py
 ```
 
-This searches for optimal parameters in `strategy_balance_future.py` to minimize GPU imbalance.
+This searches for optimal parameters in `strategy_balance_future.py` to minimize worker imbalance.
 
 ### Adding New Strategies
 
